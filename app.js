@@ -117,47 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(element);
     });
 
-    // Skill Bar Animation with correct percentages
-    function animateSkillBars() {
-        const skillItems = document.querySelectorAll('.skill-item');
-        
-        skillItems.forEach((item, index) => {
-            setTimeout(() => {
-                item.classList.add('animate');
-                
-                const progressBar = item.querySelector('.skill-progress');
-                const percentageElement = item.querySelector('.skill-percentage');
-                const targetWidth = progressBar.getAttribute('data-width');
-                const targetPercentage = percentageElement.getAttribute('data-percentage');
-                
-                // Ensure the percentage text matches the data attribute
-                percentageElement.textContent = targetPercentage + '%';
-                
-                setTimeout(() => {
-                    progressBar.style.width = targetWidth + '%';
-                }, 100);
-                
-            }, index * 150); // Stagger the animations
-        });
-    }
-
-    // Skill percentage hover effect
-    const skillItems = document.querySelectorAll('.skill-item');
-    skillItems.forEach(item => {
-        const skillBar = item.querySelector('.skill-bar');
-        const skillPercentage = item.querySelector('.skill-percentage');
-        
-        skillBar.addEventListener('mouseenter', function() {
-            skillPercentage.style.transform = 'scale(1.1)';
-            skillPercentage.style.color = 'var(--color-accent)';
-        });
-        
-        skillBar.addEventListener('mouseleave', function() {
-            skillPercentage.style.transform = 'scale(1)';
-            skillPercentage.style.color = 'var(--color-primary)';
-        });
-    });
-
     // Navbar background on scroll
     window.addEventListener('scroll', function() {
         const navbar = document.querySelector('.navbar');
@@ -305,17 +264,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (heroContent) {
             heroContent.style.opacity = '1';
             heroContent.style.transform = 'translateY(0)';
-        }
-
-        // Initialize skill bars if skills section is visible
-        const skillsSection = document.querySelector('.skills');
-        if (skillsSection) {
-            const rect = skillsSection.getBoundingClientRect();
-            if (rect.top < window.innerHeight && rect.bottom > 0) {
-                setTimeout(() => {
-                    animateSkillBars();
-                }, 500);
-            }
         }
     });
 
