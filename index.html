@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="void">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pranav P Aradhya — GenAI / Agentic AI Engineer</title>
+<meta name="description" content="Pranav P Aradhya — AI Engineer building LLM agent orchestration, GenAI applications and provider-agnostic observability. Creator of Observix and QPGen.">
+<meta name="author" content="Pranav P Aradhya">
+<meta name="theme-color" content="#06070b">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pranav P Aradhya — GenAI / Agentic AI Engineer">
+<meta property="og:description" content="An interactive trace through the work of an AI engineer. Agent graphs, span waterfalls, and a terminal you can actually type into.">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/main.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2306070b'/><circle cx='50' cy='30' r='9' fill='%2335e0e8'/><circle cx='28' cy='70' r='9' fill='%238b5cf6'/><circle cx='72' cy='70' r='9' fill='%23b6f24a'/><path d='M50 30 L28 70 M50 30 L72 70 M28 70 L72 70' stroke='%2335e0e8' stroke-width='3' fill='none' opacity='.5'/></svg>">
+</head>
+<body>
+
+<!-- ══════════════════════════ BOOT SEQUENCE ══════════════════════════ -->
+<div id="boot" class="boot" aria-hidden="true">
+  <div class="boot__inner">
+    <div class="boot__brand">
+      <span class="boot__glyph"></span>
+      <span>otel.sdk // trace-init</span>
+    </div>
+    <pre id="bootLog" class="boot__log"></pre>
+    <div class="boot__bar"><i id="bootFill"></i></div>
+    <div class="boot__foot">
+      <span id="bootPct">0%</span>
+      <button class="boot__skip" id="bootSkip" type="button">skip ⏎</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ CURSOR ══════════════════════════ -->
+<div class="cursor" id="cursor" aria-hidden="true">
+  <svg class="cursor__ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="17"/></svg>
+  <span class="cursor__dot"></span>
+  <span class="cursor__label" id="cursorLabel"></span>
+</div>
+
+<!-- ══════════════════════════ SCROLL RAIL ══════════════════════════ -->
+<aside class="rail" aria-label="Section navigation">
+  <span class="rail__cap">t0</span>
+  <div class="rail__track"><i id="railFill"></i></div>
+  <nav class="rail__nodes" id="railNodes"></nav>
+  <span class="rail__cap">t1</span>
+</aside>
+
+<!-- ══════════════════════════ TOP BAR ══════════════════════════ -->
+<header class="topbar">
+  <a class="topbar__id" href="#hero" data-cursor="root">
+    <span class="topbar__dot"></span>
+    <span class="topbar__name">PRANAV<span>·</span>ARADHYA</span>
+  </a>
+  <div class="topbar__meta">
+    <span class="tag" id="clock">--:--:--</span>
+    <span class="tag tag--live"><i></i>trace active</span>
+    <button class="kbd-hint" id="paletteBtn" type="button" data-cursor="open">
+      <kbd>⌘</kbd><kbd>K</kbd><span>jump</span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════ 01 — HERO / AGENT GRAPH ══════════════════════════ -->
+<section id="hero" class="hero" data-section="hero" data-label="root">
+  <canvas id="bgGL" class="hero__gl" aria-hidden="true"></canvas>
+  <canvas id="graph" class="hero__graph" aria-hidden="true"></canvas>
+  <div class="hero__scrim" aria-hidden="true"></div>
+
+  <div class="hero__grid" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="hero__content">
+    <div class="hero__eyebrow">
+      <span class="ticks" aria-hidden="true"></span>
+      <span>span 00 — <b>root</b></span>
+      <span class="sep">/</span>
+      <span>mysuru, in · 12.30°N 76.64°E</span>
+    </div>
+
+    <h1 class="hero__name">
+      <span class="scram" data-text="PRANAV">PRANAV</span>
+      <span class="scram outline" data-text="ARADHYA">ARADHYA</span>
+    </h1>
+
+    <div class="hero__role">
+      <span class="hero__rolePre">$</span>
+      <span id="roleText" class="hero__roleText"></span><span class="caret"></span>
+    </div>
+
+    <p class="hero__blurb">
+      I build systems where language models <em>act</em> — orchestrating tools, agents and graphs —
+      and then I make those systems <em>observable</em>, because an agent you can't trace is an agent you can't trust.
+    </p>
+
+    <div class="hero__cta">
+      <a class="btn btn--primary" href="#trace" data-cursor="expand">
+        <span>Open the trace</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16m0 0l-6-6m6 6l6-6"/></svg>
+      </a>
+      <a class="btn" href="#contact" data-cursor="type">Talk to me</a>
+    </div>
+
+    <p class="hero__hint" id="graphHint">drag the graph · click a node to traverse</p>
+  </div>
+
+  <!-- live telemetry HUD -->
+  <div class="hud" aria-hidden="true">
+    <div class="hud__row"><span>spans/s</span><b id="mSpans">0</b><i class="spark" data-spark="spans"></i></div>
+    <div class="hud__row"><span>p95 latency</span><b id="mLat">0ms</b><i class="spark" data-spark="lat"></i></div>
+    <div class="hud__row"><span>tok/s</span><b id="mTok">0</b><i class="spark" data-spark="tok"></i></div>
+    <div class="hud__row hud__row--ok"><span>error rate</span><b>0.00%</b></div>
+  </div>
+
+  <div class="hero__scroll" aria-hidden="true"><span></span>scroll</div>
+</section>
+
+<!-- ══════════════════════════ 02 — SYSTEM PROMPT / ABOUT ══════════════════════════ -->
+<section id="about" class="sec sec--about" data-section="about" data-label="system">
+  <div class="sec__head">
+    <span class="sec__no">01</span>
+    <h2 class="sec__title"><span class="scram" data-text="SYSTEM PROMPT">SYSTEM PROMPT</span></h2>
+    <p class="sec__sub">who is answering, and with what priors</p>
+  </div>
+
+  <div class="promptWrap">
+    <article class="promptCard" id="promptCard">
+      <header class="promptCard__bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="promptCard__file">identity.system.md</span>
+        <span class="promptCard__badge">role: system</span>
+      </header>
+      <div class="promptCard__body">
+        <p class="line"><span class="ln">1</span><span class="k">You are</span> <span class="s">Pranav P Aradhya</span> — an Information Science undergraduate at
+          <span class="s">The National Institute of Engineering, Mysuru</span>, and an <span class="s">AI Engineer Intern</span> on the Applied AI team at <span class="s">Mphasis</span>.</p>
+        <p class="line"><span class="ln">2</span><span class="k">You have</span> shipped GenAI to production: LLM orchestration, tool calling, and multi-agent workflows with <span class="c">LangChain</span>, <span class="c">LangGraph</span> and <span class="c">AgentScope</span>.</p>
+        <p class="line"><span class="ln">3</span><span class="k">You care</span> about the unglamorous half — verification passes, live integration tests, conformance checks against upstream semantic conventions, and sub-microsecond overhead budgets.</p>
+        <p class="line"><span class="ln">4</span><span class="k">You believe</span> the interesting problems live at the seam between <span class="c">probabilistic</span> models and <span class="c">deterministic</span> systems.</p>
+        <p class="line"><span class="ln">5</span><span class="k">Objective:</span> grow into a full-time <span class="s">GenAI / Agentic AI Engineer</span>.</p>
+      </div>
+      <footer class="promptCard__foot">
+        <span>tokens <b id="tokCount">0</b></span>
+        <span>temp <b>0.2</b></span>
+        <span>seed <b>2027</b></span>
+      </footer>
+    </article>
+
+    <aside class="derive" id="derive">
+      <h3 class="derive__h">derived attributes</h3>
+      <ul class="derive__list">
+        <li data-k="agent.frameworks"><span>agent.frameworks</span><b>3</b></li>
+        <li data-k="ship.velocity"><span>ship.velocity</span><b>2 shipped / yr</b></li>
+        <li data-k="oss.published"><span>oss.published</span><b>pypi · observix</b></li>
+        <li data-k="stack.depth"><span>stack.depth</span><b>full · infra→ui</b></li>
+        <li data-k="grad.eta"><span>grad.eta</span><b>2027</b></li>
+        <li data-k="status"><span>status</span><b class="ok">open to roles</b></li>
+      </ul>
+      <div class="derive__viz"><canvas id="attnCanvas" aria-hidden="true"></canvas><span class="derive__vizCap">attention · self × context</span></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 03 — EMBEDDING SPACE / SKILLS ══════════════════════════ -->
+<section id="stack" class="sec sec--stack" data-section="stack" data-label="stack">
+  <div class="sec__head">
+    <span class="sec__no">02</span>
+    <h2 class="sec__title"><span class="scram" data-text="EMBEDDING SPACE">EMBEDDING SPACE</span></h2>
+    <p class="sec__sub">every skill I've earned, projected into two dimensions — pull them apart</p>
+  </div>
+
+  <div class="stackTools">
+    <div class="chips" id="chips" role="group" aria-label="Filter skills by cluster"></div>
+    <div class="stackTools__right">
+      <span class="readout" id="stackReadout">hover a node</span>
+      <button class="mini" id="stackShake" type="button" data-cursor="shake">perturb</button>
+    </div>
+  </div>
+
+  <div class="stackStage">
+    <canvas id="skills" aria-label="Interactive skill constellation"></canvas>
+    <div class="stackStage__corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="tooltip" id="skillTip" aria-hidden="true"></div>
+    <p class="stackStage__note" aria-hidden="true">drag nodes · they remember where they belong</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 04 — TRACE WATERFALL ══════════════════════════ -->
+<section id="trace" class="sec sec--trace" data-section="trace" data-label="trace">
+  <div class="sec__head">
+    <span class="sec__no">03</span>
+    <h2 class="sec__title"><span class="scram" data-text="THE WATERFALL">THE WATERFALL</span></h2>
+    <p class="sec__sub">four years, instrumented — select any span to expand its attributes</p>
+  </div>
+
+  <div class="traceWrap">
+    <div class="traceMain">
+      <div class="traceAxis" id="traceAxis" aria-hidden="true"></div>
+      <div class="spans" id="spans" role="list"></div>
+      <div class="traceNow" id="traceNow" aria-hidden="true"><span>now</span></div>
+    </div>
+
+    <aside class="spanDetail" id="spanDetail" aria-live="polite">
+      <div class="spanDetail__empty" id="spanEmpty">
+        <svg viewBox="0 0 60 60" aria-hidden="true">
+          <rect x="6" y="12" width="30" height="5" rx="2.5"/><rect x="14" y="26" width="34" height="5" rx="2.5"/><rect x="22" y="40" width="22" height="5" rx="2.5"/>
+        </svg>
+        <p>no span selected</p>
+        <span>click a bar in the waterfall</span>
+      </div>
+      <div class="spanDetail__body" id="spanBody" hidden></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ══════════════════════════ 05 — WORK / DEEP DIVES ══════════════════════════ -->
+<section id="work" class="sec sec--work" data-section="work" data-label="work">
+  <div class="sec__head">
+    <span class="sec__no">04</span>
+    <h2 class="sec__title"><span class="scram" data-text="TWO THINGS I BUILT">TWO THINGS I BUILT</span></h2>
+    <p class="sec__sub">not screenshots — the actual architecture, running</p>
+  </div>
+
+  <!-- ── QPGen ── -->
+  <article class="case" id="caseQpgen">
+    <div class="case__side">
+      <span class="case__idx">P·01</span>
+      <h3 class="case__name">QPGen</h3>
+      <p class="case__tag">AI question-paper generator for teachers</p>
+      <p class="case__desc">
+        A full-stack GenAI app that generates chapter-scoped <b>JEE / NEET / Board</b> papers with complete answer keys.
+        The hard part isn't drafting questions — it's trusting them. So nothing reaches a teacher on one pass.
+      </p>
+      <ul class="case__facts">
+        <li><span>pipeline</span><b>two-pass draft → re-solve</b></li>
+        <li><span>inputs</span><b>reference PDF + diagram extraction</b></li>
+        <li><span>output</span><b>paper + keyed answers, letterhead</b></li>
+        <li><span>math</span><b>full notation rendering</b></li>
+      </ul>
+      <div class="case__stack">
+        <i>Next.js</i><i>Supabase</i><i>PostgreSQL</i><i>OpenAI Vision</i><i>Vercel</i>
+      </div>
+    </div>
+
+    <div class="case__stage">
+      <div class="pipe" id="pipe">
+        <div class="pipe__bar">
+          <span class="pipe__title">generation pipeline</span>
+          <button class="runBtn" id="runPipe" type="button" data-cursor="run">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg><span>run</span>
+          </button>
+        </div>
+        <div class="pipe__stages" id="pipeStages">
+          <div class="stage" data-stage="0"><span class="stage__n">01</span><b>ingest</b><em>reference paper + chapters</em><i class="stage__bar"></i></div>
+          <div class="stage" data-stage="1"><span class="stage__n">02</span><b>draft</b><em>pass 1 — vision model writes Q1…Qn</em><i class="stage__bar"></i></div>
+          <div class="stage" data-stage="2"><span class="stage__n">03</span><b>re-solve</b><em>pass 2 — independent solve, no peeking</em><i class="stage__bar"></i></div>
+          <div class="stage" data-stage="3"><span class="stage__n">04</span><b>reconcile</b><em>mismatch → flag for teacher</em><i class="stage__bar"></i></div>
+          <div class="stage" data-stage="4"><span class="stage__n">05</span><b>export</b><em>PDF paper + separate key</em><i class="stage__bar"></i></div>
+        </div>
+        <div class="pipe__out" id="pipeOut">
+          <div class="qrow" data-q="1"><span class="qn">Q1</span><span class="qt">Derive the expression for electric field on the axis of a dipole.</span><span class="qs"></span></div>
+          <div class="qrow" data-q="2"><span class="qn">Q2</span><span class="qt">A body of mass 2 kg moves under F = 3t². Find v at t = 4 s.</span><span class="qs"></span></div>
+          <div class="qrow" data-q="3"><span class="qn">Q3</span><span class="qt">Identify the product of the given reaction and justify the mechanism.</span><span class="qs"></span></div>
+          <div class="qrow" data-q="4"><span class="qn">Q4</span><span class="qt">Evaluate ∫₀^π x·sin x dx using integration by parts.</span><span class="qs"></span></div>
+          <div class="qrow" data-q="5"><span class="qn">Q5</span><span class="qt">State and prove the work–energy theorem for a variable force.</span><span class="qs"></span></div>
+        </div>
+        <div class="pipe__foot" id="pipeFoot"><span class="pipe__status">idle — press run</span></div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ── Observix ── -->
+  <article class="case case--rev" id="caseObservix">
+    <div class="case__side">
+      <span class="case__idx">P·02</span>
+      <h3 class="case__name">Observix</h3>
+      <p class="case__tag">provider-agnostic LLM observability · on PyPI</p>
+      <p class="case__desc">
+        Every tracing backend speaks its own dialect of the same idea. Observix instruments your AI app
+        <b>once</b> and emits native telemetry to all of them at the same time — no lowest-common-denominator translation layer.
+      </p>
+      <ul class="case__facts">
+        <li><span>overhead</span><b>sub-µs when unconfigured</b></li>
+        <li><span>tests</span><b>live integration, not just in-memory</b></li>
+        <li><span>bugs caught pre-release</span><b>2</b></li>
+        <li><span>conformance</span><b>diffed vs upstream OTel/OpenInference</b></li>
+      </ul>
+      <div class="case__stack">
+        <i>Python</i><i>OpenTelemetry</i><i>OTLP</i><i>PyPI</i>
+      </div>
+    </div>
+
+    <div class="case__stage">
+      <div class="fan" id="fan">
+        <div class="fan__bar">
+          <span class="pipe__title">fan-out · one instrument, four vocabularies</span>
+          <span class="fan__hint">toggle a sink</span>
+        </div>
+        <div class="fan__viz">
+          <svg id="fanSvg" viewBox="0 0 460 300" role="img" aria-label="Telemetry fan-out diagram">
+            <defs>
+              <linearGradient id="fanEdge" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#35e0e8" stop-opacity=".05"/>
+                <stop offset="1" stop-color="#35e0e8" stop-opacity=".55"/>
+              </linearGradient>
+              <filter id="fanGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g id="fanEdges"></g>
+            <g id="fanNodes"></g>
+            <g id="fanPackets"></g>
+          </svg>
+        </div>
+        <div class="fan__legend" id="fanLegend"></div>
+        <pre class="fan__code"><code><span class="c1">pip install observix</span>
+
+<span class="c2">from</span> observix <span class="c2">import</span> instrument
+instrument(<span class="c3">app</span>=<span class="c4">"qpgen"</span>, sinks=<span class="c4">"*"</span>)
+<span class="c5"># → phoenix · langfuse · mlflow · datadog</span></code></pre>
+      </div>
+    </div>
+  </article>
+</section>
+
+<!-- ══════════════════════════ 06 — TERMINAL / CONTACT ══════════════════════════ -->
+<section id="contact" class="sec sec--contact" data-section="contact" data-label="exit">
+  <div class="sec__head">
+    <span class="sec__no">05</span>
+    <h2 class="sec__title"><span class="scram" data-text="END OF TRACE">END OF TRACE</span></h2>
+    <p class="sec__sub">the span closes here — but you can still send a signal</p>
+  </div>
+
+  <div class="term" id="term" data-cursor="type">
+    <header class="term__bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="term__title">pranav@aradhya — ~/portfolio — zsh</span>
+      <span class="term__badge">interactive</span>
+    </header>
+    <div class="term__screen" id="termScreen" role="log" aria-live="polite"></div>
+    <div class="term__input">
+      <span class="term__prompt">➜ <b>~</b></span>
+      <input id="termInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal input">
+      <span class="term__ghost" id="termGhost"></span>
+    </div>
+  </div>
+
+  <div class="links">
+    <a class="link" href="mailto:pranavparadhya1@gmail.com" data-cursor="mail">
+      <span class="link__k">email</span><span class="link__v">pranavparadhya1@gmail.com</span><span class="link__arrow">↗</span>
+    </a>
+    <a class="link" href="https://github.com/Pranav-PA" target="_blank" rel="noopener" data-cursor="open">
+      <span class="link__k">github</span><span class="link__v">Pranav-PA</span><span class="link__arrow">↗</span>
+    </a>
+    <a class="link" href="https://www.linkedin.com/in/pranav-p-aradhya/" target="_blank" rel="noopener" data-cursor="open">
+      <span class="link__k">linkedin</span><span class="link__v">pranav-p-aradhya</span><span class="link__arrow">↗</span>
+    </a>
+    <a class="link" href="tel:+918147238214" data-cursor="call">
+      <span class="link__k">phone</span><span class="link__v">+91 81472 38214</span><span class="link__arrow">↗</span>
+    </a>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot__l">
+    <span class="foot__trace">trace_id <b id="traceId">—</b></span>
+    <span>status <b class="ok">200 OK</b></span>
+  </div>
+  <div class="foot__c">Designed &amp; built by Pranav P Aradhya · Mysuru, India</div>
+  <div class="foot__r"><button class="mini" id="toTop" type="button" data-cursor="up">↑ root span</button></div>
+</footer>
+
+<!-- ══════════════════════════ COMMAND PALETTE ══════════════════════════ -->
+<div class="palette" id="palette" hidden>
+  <div class="palette__scrim" data-close></div>
+  <div class="palette__box" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="palette__inputWrap">
+      <span class="palette__caret">›</span>
+      <input id="paletteInput" type="text" placeholder="jump to a span, or run a command…" autocomplete="off" spellcheck="false">
+      <kbd>esc</kbd>
+    </div>
+    <ul class="palette__list" id="paletteList" role="listbox"></ul>
+  </div>
+</div>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="noscript-note"><noscript>This site is an interactive trace — it needs JavaScript. The content below still reads fine without it.</noscript></div>
+
+<script src="assets/js/util.js" defer></script>
+<script src="assets/js/data.js" defer></script>
+<script src="assets/js/bg.js" defer></script>
+<script src="assets/js/hero.js" defer></script>
+<script src="assets/js/skills.js" defer></script>
+<script src="assets/js/trace.js" defer></script>
+<script src="assets/js/work.js" defer></script>
+<script src="assets/js/terminal.js" defer></script>
+<script src="assets/js/main.js" defer></script>
+</body>
+</html>
