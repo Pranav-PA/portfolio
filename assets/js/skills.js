@@ -299,7 +299,7 @@
       /* --- nodes --- */
       for (const n of nodes) {
         if (n.ao < 0.02) continue;
-        const breathe = 1 + Math.sin(t * 0.03 + n.seed) * 0.055;
+        const breathe = PP.reduced ? 1 : 1 + Math.sin(t * 0.03 + n.seed) * 0.055;
         const r = n.r * breathe * (1 + n.hot * 0.45);
         const A = n.ao;
 

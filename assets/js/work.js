@@ -177,6 +177,9 @@
     /* packets */
     let t = 0;
     PP.rafWhenVisible(svg, dt => {
+      // Under reduced motion the diagram stays fully readable — it just
+      // stops emitting packets and pulsing.
+      if (PP.reduced) return;
       t += dt;
       pulse.setAttribute('r', (3.4 + Math.sin(t * 0.09) * 1.5).toFixed(2));
 

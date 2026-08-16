@@ -200,10 +200,14 @@
       t += dt;
       ctx.clearRect(0, 0, W, H);
 
+      // Reduced motion keeps the graph interactive but stops it drifting,
+      // pulsing and routing packets on its own.
+      const still = PP.reduced;
+
       /* dust */
       ctx.save();
       for (const d of dust) {
-        d.x += d.vx * dt * d.z; d.y += d.vy * dt * d.z;
+        if (!still) { d.x += d.vx * dt * d.z; d.y += d.vy * dt * d.z; }
         if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10;
         if (d.y < -10) d.y = H + 10; if (d.y > H + 10) d.y = -10;
         ctx.globalAlpha = d.a * d.z;
@@ -218,8 +222,9 @@
         if (n.held) continue;
 
         // spring home + slow idle orbit so it never looks frozen
-        n.phase += 0.006 * dt;
-        const ox = Math.cos(n.phase) * 7, oy = Math.sin(n.phase * 1.3) * 6;
+        if (!still) n.phase += 0.006 * dt;
+        const ox = still ? 0 : Math.cos(n.phase) * 7;
+        const oy = still ? 0 : Math.sin(n.phase * 1.3) * 6;
         n.vx += ((n.hx + ox) - n.x) * 0.014 * dt;
         n.vy += ((n.hy + oy) - n.y) * 0.014 * dt;
 
@@ -255,6 +260,7 @@
         ctx.stroke();
 
         /* packets riding the curve */
+        if (still) continue;
         for (let i = e.packets.length - 1; i >= 0; i--) {
           const p = e.packets[i];
           p.t += p.sp * dt * (1 + lit * 2.4);
@@ -295,7 +301,7 @@
       /* nodes */
       for (const n of nodes) {
         const r = n.r * (1 + n.hot * 0.34);
-        const pulse = 0.5 + 0.5 * Math.sin(t * 0.05 + n.phase);
+        const pulse = still ? 0.5 : 0.5 + 0.5 * Math.sin(t * 0.05 + n.phase);
 
         // halo
         const hg = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * (7 + n.hot * 4));
