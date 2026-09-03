@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.Icon
 
 /**
@@ -68,7 +68,7 @@ fun GarageApp() {
 enum class Destination(val title: String, val icon: ImageVector) {
     Dashboard("Dashboard", Icons.Filled.Dashboard),
     Maintenance("Maintenance", Icons.Filled.Build),
-    QuickSpecs("Quick Specs", Icons.Filled.MenuBook),
+    QuickSpecs("Quick Specs", Icons.AutoMirrored.Filled.MenuBook),
 }
 
 /**
