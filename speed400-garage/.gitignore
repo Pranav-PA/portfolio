@@ -1,0 +1,17 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+
+# Never commit signing material or the Gemini key (§14)
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
