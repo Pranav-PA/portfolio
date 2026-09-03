@@ -5,7 +5,12 @@ a 2024 Triumph Speed 400.
 
 **Status:** planning document. No code written yet.
 **Author:** drafted for Pranav P Aradhya (Mysuru, India), single-user, single-bike.
-**Last updated:** 2026-09-03 (rev 2 — device, AI provider and manual sourcing decided)
+**Last updated:** 2026-09-03 (rev 3 — self-contained; carries its own kickoff prompts)
+
+> **Starting a fresh session?** This document is designed to be the only thing you
+> upload. Read §1–§18 for the product, then go to **Appendix B — Session prompts** and
+> paste the Phase 0 prompt. Everything a new session needs to know is in here; no prior
+> conversation is required.
 
 ---
 
@@ -1222,10 +1227,30 @@ The official *Owner's Handbook — Speed 400 and Scrambler 400 X* (UK English,
 points at. I could not download it from the sandbox this plan was written in (network
 egress policy blocked all three hosts), so this is a manual Phase 0 step.
 
+**Preferred — Triumph's own technical-information service:**
+
+```
+https://api.triumphtechnicalinformation.com/handbooks/documents/698361316236d0957f547eca/pdf
+```
+
+This is a first-party Triumph endpoint, which makes it a better provenance anchor than
+any mirror — the app can cite the official document ID rather than "some PDF from a
+forum". Use this one if it resolves.
+
+**Mirrors, if the above needs auth or a browser session:**
+
 - [Team-BHP forum — direct PDF of the official handbook](https://www.team-bhp.com/forum/attachments/motorbikes/2604894d1715434748-triumph-speed-400-review-triumph-speed-400-scrambler-400-x-owners-handbook-uk-english-09-2023.pdf)
 - [ManualsLib — Triumph Speed 400 Owner's Handbook](https://www.manualslib.com/manual/3346108/Triumph-Speed-400.html) (~5 MB)
 - [ManualsLib — Triumph Speed 400 (2023) Owner's Handbook](https://www.manualslib.com/manual/3443037/Triumph-Speed-400-2023.html)
 - [World of Triumph — Owners Handbooks](https://www.worldoftriumph.com/pages/owners-handbooks)
+
+> **Known issue, carried forward:** an attempt to upload this PDF into the planning
+> session produced a **1-page, 72 KB file containing a single raster image and no text
+> layer** — almost certainly a rendered preview or an auth-wall page rather than the
+> handbook itself. If the same thing happens again, the download needs a real browser
+> session against Triumph's site rather than a direct GET. Verify any downloaded file
+> before trusting it: **the real handbook is roughly 5 MB and 100+ pages with an
+> extractable text layer.** A one-page PDF is not it.
 
 A workshop/service manual would additionally cover torque specs and teardown
 procedures; worth looking for if §16's DIY question comes back "yes".
@@ -1255,3 +1280,220 @@ noted in §3 came from comparing these.
 - [Triumph 400 Forum — first service](https://www.triumph400forum.com/threads/first-service.239/)
 - [Autocar India — Speed 400 specifications](https://www.autocarindia.com/bikes/triumph/speed-400/specifications)
 - [Team-BHP — Speed 400 specifications](https://www.team-bhp.com/new-bikes/triumph/speed-400/specifications/)
+
+---
+
+## Appendix B — Session prompts
+
+Paste-ready prompts for building this in a fresh session. Each assumes `plan.md` (this
+file) is in the working directory and nothing else is known.
+
+### Environment checklist
+
+Before starting, make sure the session has:
+
+- **Network access to:** `api.triumphtechnicalinformation.com`, `ai.google.dev`,
+  `generativelanguage.googleapis.com`, `dl.google.com`, `maven.google.com`,
+  `repo1.maven.org`, `services.gradle.org`. The planning session was blocked on most of
+  these, which is why the handbook was never retrieved.
+- **Android SDK + JDK 17+**, or a session that can install them.
+- **Your Gemini API key** — as an environment variable, never committed.
+- A repo for the app. This plan currently lives in a portfolio repo; the app should get
+  its own.
+
+---
+
+### Prompt 0 — Phase 0: bootstrap and ground truth
+
+```
+Read plan.md in full. It is the complete product spec for a personal Android
+tablet app that acts as the digital memory of my Triumph Speed 400. I wrote it
+with an earlier session; you have no other context, and everything you need is
+in that file.
+
+Execute Phase 0 from §15.
+
+Start with the part everything else depends on — the owner's handbook:
+
+1. Download the Triumph Speed 400 owner's handbook PDF. Preferred source and
+   mirrors are in the Appendix. VERIFY WHAT YOU GET: the real handbook is
+   ~5 MB, 100+ pages, with an extractable text layer. A previous attempt
+   returned a 1-page 72 KB raster with no text — that is an auth wall, not the
+   handbook. If you hit the same thing, say so and try the mirrors rather than
+   proceeding with a bad file.
+
+2. From the handbook, extract:
+   - the full scheduled maintenance table (every item, km and time interval)
+   - tyre pressures (solo and pillion), oil grade and capacity, coolant spec,
+     spark plug, brake fluid spec, chain slack, fuel tank capacity, engine
+     displacement
+   Record a page number for every single value.
+
+3. Write these into two seed files:
+   - components.json  — the component catalogue from §6.1, with real intervals
+                        and interval_source="manual" plus manual_page_ref
+   - facts.json       — the curated fact table from §10.3
+   Anything you cannot find in the handbook gets interval_source="unverified"
+   and is flagged in your summary. Do not fill gaps from general knowledge —
+   §3 P5 is a hard rule.
+
+4. Then scaffold the app: Kotlin + Compose, Material 3, Room, Hilt, per §14.
+   Tablet-only, landscape-first, fixed list-detail panes — no WindowSizeClass
+   branching (§4.1). Implement the §6 schema with UUID PKs and row-level
+   updated_at. Get it building and running on a tablet emulator.
+
+Report: what you extracted vs. what the handbook didn't cover, and anything in
+the plan that turned out to be wrong once you had the real document.
+```
+
+---
+
+### Prompt 1 — Phase 1: the logbook
+
+```
+Read plan.md. Phase 0 is done — the schema exists and components.json /
+facts.json are seeded from the handbook.
+
+Build Phase 1 from §15: the logbook. This is the phase that has to ship early,
+because the app's value compounds with elapsed time (§13) — I want to start
+logging real data while later phases get built.
+
+Scope:
+- Odometer readings + the km/day projection engine (§5.1). Estimates must never
+  be written to the DB as observations.
+- Fuel logging, ₹-first per §7.2 — amount and rate in, litres derived. Not
+  litres-first; that's backwards for Indian pumps.
+- The full-to-full fuel economy engine, exactly as specified in §9.1. Partial
+  fills accumulate; missed fills break the chain rather than producing a wrong
+  number.
+- Entry-time validation per §9.2 — every check is a QUESTION, never a rejection.
+- Expenses as line items (§4.2). Money lives in exactly one place; no total is
+  ever computed by summing events.
+- Timeline, dashboard v1 (§7.1), Capture Inbox (§5.2 — gallery import,
+  share-sheet target, drag-and-drop; this is the app's only route in, so it has
+  to be good).
+- Backup / restore / export (§14). Non-negotiable this phase. Verify a restore
+  actually works before I trust it with real data.
+
+Write unit tests for the fuel-economy, projection and cost engines before the
+UI. §9 is where correctness actually matters.
+```
+
+---
+
+### Prompt 2 — Phase 2: maintenance, reminders, documents
+
+```
+Read plan.md. Phases 0-1 are done and I've been logging real data.
+
+Build Phase 2 from §15:
+- Components, intervals, ComponentActions, DIY vs workshop
+- Service records with line items and attached invoices
+- The reminder engine per §8 — all four rule types, km rules projected onto
+  dates via §5.1, and the notification policy in §8.2 (light checks batch into
+  a weekly digest; never notify individually)
+- Notification actions: Done / Snooze / Log it, writing real events
+- Documents with expiry (§7.6) — archive, not roadside. Insurance needs two
+  expiry dates (OD and TP); check my actual policy for the real structure.
+- Warranty guard (§5.3) — separate high-priority channel, refuses completion
+  without an invoice
+- Fault/niggle log (§5.4)
+- Staleness handling per §8.3
+
+Provenance badges (§3 P4) render everywhere an interval or number appears.
+```
+
+---
+
+### Prompt 3 — Phase 3: understanding
+
+```
+Read plan.md. Build Phase 3 from §15.
+
+- Analytics per §11 — ONLY the charts in that table. Each one answers a written
+  question; if you want to add a chart, write the question first and tell me.
+- The three cost-per-km numbers (§9.3), always labelled, never a bare "cost per
+  km". Depreciation is a 🟡 estimate.
+- Full-text search (FTS5) across everything including my notes
+- Build sheet (§7.10), tyre panel (§5.6)
+- Trip readiness check (§5.5) — the payoff screen
+- Export a complete history PDF (§5.9)
+- Tablet multi-pane polish, keyboard shortcuts for batch entry
+
+Every chart states its window and carries a one-line plain-language takeaway.
+```
+
+---
+
+### Prompt 4 — Phase 4: the assistant
+
+```
+Read plan.md, especially §10 in full. Build Phase 4.
+
+Provider is Gemini. Two things from §10.6 are load-bearing:
+
+1. PLAN-THEN-RENDER. The model selects tools; the DEVICE executes them and
+   composes the answer from local templates. My financial figures must not go
+   to Google for ordinary record questions — only the question text and the
+   static tool schema cross the network. Open-ended questions that genuinely
+   need the numbers get an explicit per-question opt-in with a visible warning.
+
+2. The model ID lives in settings, never in code. Verify the current Flash-tier
+   model ID in AI Studio before wiring it up — do not trust any ID written in
+   plan.md. The 2.5 series was reported to retire 16 Oct 2026.
+
+Also build:
+- Handbook import → chunk → Gemini embeddings → local vectors + FTS hybrid
+  retrieval, every chunk page-cited (§10.2). Do NOT paste the whole manual into
+  context; §10.2 explains why that shortcut is rejected.
+- The record tools in §10.1, typed and deterministic over SQLite
+- Provenance badges on every answer (§3 P4)
+- The numeric grounding check (§10.4) as a deterministic post-check, not a
+  prompt instruction
+- The safety rule (§10.5) — verified-only for tyre pressures, torque, fluid
+  specs, brake specs, valve clearances. Refuse rather than estimate. Note the
+  owner's handbook lacks torque specs, so those refusals are correct.
+- Offline fact-table fallback + Quick Specs screen
+- Split view: handbook PDF beside the assistant
+```
+
+---
+
+### Prompt 5 — utilities
+
+**Verify the seeded facts:**
+```
+Read plan.md §10.3 and §3 P5. Go through facts.json row by row against the
+handbook PDF. For each row confirm the value and the page number, then mark it
+verified. Report anything that doesn't match, anything you can't locate, and
+anything marked verified that shouldn't be. An unverified row is better than a
+wrong one.
+```
+
+**Ship a build:**
+```
+Read plan.md §14. Set up Gradle + GitHub Actions to produce a signed APK I can
+sideload onto my tablet. No Play Store, no analytics SDK, no crash reporting —
+nothing phones home (§12). The signing key and the Gemini key stay out of the
+repo.
+```
+
+**Sanity-check the plan against reality:**
+```
+Read plan.md. I've been using the app for a month. Here's what's actually
+happened: [describe]. Tell me which assumptions in the plan turned out wrong,
+what should be re-prioritised, and whether the §4.1 revisit trigger (chronically
+backed-up Inbox → build a phone capture companion) has fired.
+```
+
+---
+
+### Still to decide (§16)
+
+Answer these when the relevant phase starts — a fresh session will ask:
+
+1. What history can you backfill? (purchase date, price, current odo, old invoices)
+2. Do you do your own maintenance, or is it all dealer-done?
+3. Will you enable billing on the Gemini key?
+4. Do you want ride tracking at all, or is a manual trip log enough?
+5. How much time per week?
