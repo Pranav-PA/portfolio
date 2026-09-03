@@ -5,7 +5,7 @@ a 2024 Triumph Speed 400.
 
 **Status:** planning document. No code written yet.
 **Author:** drafted for Pranav P Aradhya (Mysuru, India), single-user, single-bike.
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-03 (rev 2 — device, AI provider and manual sourcing decided)
 
 ---
 
@@ -35,8 +35,10 @@ Most of the design decisions below are in service of one or the other.
 |---|---|
 | Users | One. Me. No accounts, no login, no sharing, no cloud identity. |
 | Vehicles | One (Speed 400). Model the schema for N, build the UI for 1. |
-| Primary devices | Android tablet (review/analysis) + Android phone (capture) |
+| Device | **Android tablet only.** No phone build. The phone is a camera that feeds the tablet (§4.1). |
 | Connectivity | Must be fully usable offline. Network only for the AI assistant. |
+| AI provider | **Google Gemini** (existing API key). See §10 — this choice has real privacy consequences. |
+| Knowledge source | Official Triumph owner's handbook PDF, user-imported. See §10.2. |
 | Region | India — ₹, litres, km, PUC/RC/insurance, roadside fuel pumps |
 | Distribution | Self-signed APK, sideloaded. No Play Store. |
 | Bike telemetry | **None available.** The Speed 400 has no accessible OBD/Bluetooth data port for a phone app. Every odometer reading is entered by a human or read by the camera. This is the single biggest constraint on the whole design. |
@@ -57,14 +59,19 @@ not the user.
 |---|---|
 | Log a fuel fill | 3 taps + 2 numbers |
 | Log an arbitrary expense | 3 taps + 1 number |
-| Capture a bill for later | 1 tap (camera opens, shoot, done) |
+| Import a photographed bill from the gallery | 2 taps to Inbox, then confirm OCR |
 | Update the odometer | 1 tap + 1 number |
 | Mark a reminder done | 1 tap, from the notification |
 
-The corollary: **capture and structure are separate acts.** At a petrol pump in the
-sun, wearing gloves, I should be able to photograph the bill and walk away. Turning
-that photo into a structured record can happen that evening on the tablet, from an
-Inbox. Data is never lost because I was in a hurry.
+The corollary: **capture and structure are separate acts.** On a tablet-only app the
+split is forced rather than chosen — the tablet is not at the petrol pump. So the
+capture half happens on whatever camera is in my pocket, and the app's job is to make
+the *structuring* half effortless: excellent gallery import, good OCR, sensible
+defaults. See §4.1 for what this costs and §5.2 for the mechanism.
+
+The risk this introduces: entries become **batched rather than immediate**, and
+batched things get forgotten. That's why the Inbox count sits on the dashboard and
+why the staleness nudges (§8.3) matter more here than they would in a phone app.
 
 ### P2 — One event log, many views
 
@@ -122,7 +129,8 @@ caliper bolt; a hallucinated tyre pressure can end badly at speed.
 
 ### P6 — The data outlives the device
 
-This is meant to be a ten-year record on a phone that will be replaced three times.
+This is meant to be a ten-year record on a tablet that will be replaced two or three
+times.
 Backup and restore is a **Phase 1** feature, not a "later" feature. If the device
 dies and the data is gone, the entire premise collapses.
 
@@ -132,24 +140,52 @@ dies and the data is gone, the entire premise collapses.
 
 Taking the request to think for myself rather than transcribe the feature list.
 
-### 4.1 "Tablet-first" is half right, and the half that's wrong matters
+### 4.1 Tablet-only — decided, and here's the bill
 
-Analysis is tablet-shaped: reviewing charts, reading service history, filing
-documents, browsing the timeline, chatting with the assistant. That happens at home,
-on the sofa.
+**Decision: tablet only. No phone build.** This is settled, and it's a good trade —
+but it isn't free, and the plan is better for naming the cost up front.
 
-**Capture is phone-shaped.** It happens at a petrol pump, at a service centre
-counter, at a roadside mechanic in the rain. The tablet will not be there.
+**What it buys.** Everything that makes this app worth having is review-shaped:
+reading service history, filing documents, reconciling spend, reading charts, talking
+to the assistant, scrolling the timeline. All of that is better on a tablet and worse
+on a phone. And critically, it **resolves the sync question** — one device of record,
+no merge conflicts, no last-write-wins, no per-row vector clocks. A whole category of
+complexity disappears from Phase 0.
 
-If the phone experience is an afterthought, the friction budget (P1) is blown and the
-data never gets logged — which breaks everything downstream. So:
+**What it costs.** The tablet will not be at the petrol pump. Two things break:
 
-> **Recommendation:** build adaptive from day one — one codebase, `WindowSizeClass`
-> driven. Tablet gets multi-pane list+detail layouts and the analytics surface. Phone
-> gets a stripped, thumb-reachable capture surface. Neither is a scaled version of the
-> other. Design the capture screens phone-first and the review screens tablet-first.
+1. **In-app camera capture at the point of sale is gone.** The original friction
+   budget assumed I could shoot a bill and walk away. I can't — not with a tablet.
+2. **The odometer, which is the spine of the entire data model (P3), is read off the
+   dashboard of a motorcycle** that the tablet is nowhere near.
 
-This also forces an early decision on sync — see §16 Open Questions.
+**How we pay for it.** The phone stops being a second client and becomes *a camera
+that feeds the tablet*. That's a much smaller ask than a phone app:
+
+> At the pump, photograph the cluster (odometer) and the bill with the phone's normal
+> camera app. Google Photos backup carries it to the tablet within minutes, with zero
+> effort and no code. That evening, the app's Inbox imports from the gallery, OCRs it,
+> and pre-fills the entry.
+
+So the engineering requirement is not "build a phone app", it's **"build an excellent
+image import path"** — gallery picker, share-sheet target, drag-and-drop. Roughly two
+days of work instead of a second client.
+
+**What actually dies.** The "show your documents at a traffic stop" mode from §7.6.
+I am not handing a police officer a tablet, and I won't be carrying one. DigiLocker /
+mParivahan on the phone is the real answer to that use case and this app should not
+pretend otherwise. Demoted — the documents feature stays, the roadside mode goes.
+
+**What gets better.** With no phone layout to compromise for, every screen can be
+genuinely tablet-native: permanent list-detail panes, landscape-first, side-by-side
+charts, the PDF manual open beside the assistant in split view, drag-and-drop import,
+and keyboard shortcuts for fast batch entry if a keyboard is attached. No
+`WindowSizeClass` branching, no responsive compromises. Design for one screen size
+class and design it properly.
+
+> **Revisit trigger:** if after three months the Inbox is chronically backed up, that's
+> evidence the batching cost is real, and a minimal phone capture companion goes on the
+> Phase 5 list. Don't pre-build it.
 
 ### 4.2 Fuel and expenses are the same thing, entered once
 
@@ -214,9 +250,14 @@ meaningless:
 
 ### 4.7 "No accounts" is right, and it hands me a problem to solve
 
-No accounts means no server, which means no sync and no automatic backup. That's the
-correct trade for a personal app — but it must be paid for deliberately (P6) with a
-first-class export/restore, not ignored. See §14 (backup) and §16 (the sync question).
+No accounts means no server, which means no automatic backup. That's the correct
+trade for a personal app — but it must be paid for deliberately (P6) with a
+first-class export/restore, not ignored. See §14 (backup).
+
+The *sync* half of this problem is now moot: the tablet-only decision (§4.1) means
+there is exactly one device of record. Worth keeping UUID primary keys and row-level
+`updated_at` anyway — they cost nothing today and preserve the option if a phone
+companion ever lands in Phase 5.
 
 ---
 
@@ -251,14 +292,33 @@ Two consequences worth designing for:
 
 ### 5.2 The Capture Inbox ⭐
 
-A photo-first queue. One tap from anywhere shoots a bill, a pump display, an odometer,
-a part label, a warning light on the dash. It lands in an Inbox as an unstructured
-item with a timestamp and location. Later, on the tablet, the Inbox shows each photo
-with OCR-extracted candidates pre-filled and I confirm or correct.
+A staging queue for photos that haven't become records yet. Given the tablet-only
+decision (§4.1), this is the single most important feature in the app — it is the only
+bridge between where data is created (roadside, on a phone) and where it's entered
+(at home, on a tablet). If the Inbox is bad, the app has no data and nothing else
+matters.
 
-This is the mechanism that makes P1 achievable. It also means the app degrades
-gracefully: worst case, it's a well-organised shoebox of photos with dates — which is
-still better than what most people have.
+**Three ways in, all of which must work well:**
+
+1. **Gallery import** — the primary path. A picker filtered to recent images, showing
+   what's already been imported so nothing is done twice. Multi-select, because a
+   month of bills gets reconciled in one sitting.
+2. **Share-sheet target** — the app registers for `image/*` and `application/pdf`, so
+   sharing from Google Photos, Drive, Gmail or WhatsApp lands straight in the Inbox.
+   This is how an emailed insurance PDF or a WhatsApped service invoice gets in.
+3. **Drag and drop** — Android tablets support it, and dropping a PDF onto the
+   documents screen is the natural gesture. Cheap to add, feels native.
+
+**What happens to an item:** OCR extracts candidates (odometer, amount, litres, rate,
+date, vendor), the item is classified into a likely type, and it waits as a card
+showing the photo beside a pre-filled form. Confirm, correct, or defer. Items retain
+their original photo timestamp, not the import time — so a bill photographed on the
+3rd and imported on the 11th is dated the 3rd.
+
+**Why this matters beyond convenience:** it means the app degrades gracefully. Worst
+case — I never reconcile anything — it's still a chronological, searchable shoebox of
+dated bike photos, which is better than what most owners have. The structured data is
+an upgrade on top of that floor, not a precondition for the app being useful.
 
 ### 5.3 Warranty guard ⭐
 
@@ -344,7 +404,9 @@ timeline feel real from day one.
 
 - **Fuel station + fuel grade on each fill.** Riders swear one pump gives better
   mileage. With enough data that becomes a testable claim rather than folklore.
-- **Home-screen widget:** current odometer, next thing due, one-tap fuel log.
+- **Home-screen widget:** current odometer, next thing due, one-tap fuel log. Lower
+  value on a tablet than it would be on a phone — tablet home screens get used less —
+  so this drops to Phase 5 and may not be worth building at all.
 - **Anomaly detection on entry** — see §9.2. Bad data is worse than no data.
 - **Full-text search over everything**, including my own notes.
 - **Pre-service prep screen:** open faults + due items + last service reference,
@@ -437,7 +499,7 @@ interval, and it's why a service visit is one event rather than seven.
 
 Ordered by what I actually need when I open the app:
 
-1. **Quick actions** — a persistent row, thumb-height on phone:
+1. **Quick actions** — a persistent row, always reachable:
    `⛽ Fuel` · `₹ Expense` · `📷 Capture` · `🔢 Odo`. Never more than one tap away.
 2. **Bike card** — photo, registration, estimated odometer with freshness, days owned.
 3. **Due next** — the three most urgent items across services, documents and
@@ -522,11 +584,18 @@ Grid of cards with a prominent expiry state (valid / expiring / expired). Each s
 the file, the metadata, the premium paid (which flows into expenses automatically),
 and renewal history.
 
-**Offline-first "show at a checkpoint" mode:** one tap from the dashboard, full
-brightness, large, works with zero network. Note that in India the legally-accepted
-digital route is DigiLocker / mParivahan — this app complements that with the
-*complete* file set (warranty card, service plan, old invoices) rather than replacing
-it. Worth saying out loud so I don't rely on it in the wrong situation.
+**Cut: the roadside "show at a checkpoint" mode.** It was in the first draft of this
+plan and the tablet-only decision kills it (§4.1) — I won't be carrying the tablet, and
+handing one to a traffic officer isn't a thing. In India the legally-accepted digital
+route is **DigiLocker / mParivahan on the phone**, and that's the right tool for that
+job. This app's documents feature is for the *complete* file set — warranty card,
+service plan, old invoices, past policies, purchase paperwork — which is an archive
+problem, not a roadside problem. Being clear about the boundary matters so I don't
+rely on the wrong app at the wrong moment.
+
+**What the archive does need:** expiry tracking that feeds reminders (§8), the premium
+amount flowing into expenses, renewal chains (this year's policy linked to last
+year's), and export so the whole set can be handed over at resale.
 
 ### 7.7 Timeline
 
@@ -705,29 +774,70 @@ is the same as wrong.
                                └──────┬─────────────────┘
                                       │  typed SQL, deterministic
               ┌───────────────────────▼──────┐
-              │ Composer + numeric grounding │
-              │ check → answer with badges   │
+              │ Composer + numeric grounding │  ← on-device for
+              │ check → answer with badges   │    record answers (§10.6)
               └──────────────────────────────┘
 ```
+
+Only the **Router** step crosses the network. Everything below it runs on the tablet —
+which, per §10.6, is what keeps my financial history out of Google's training data.
 
 Many real questions need both sides. *"Should I change my oil?"* =
 `spec_lookup("engine oil interval")` (🟢 manual) + `last_event("engine_oil")` (🔵
 records) + `current_odometer()` (🟡 estimate) → a synthesised answer whose every
 component is attributed.
 
-### 10.2 The knowledge corpus
+### 10.2 The knowledge corpus — and where the manual comes from
 
-- **User-supplied.** I import my own owner's manual PDF; the app parses, chunks by
-  section, keeps page numbers, and embeds. The manual is copyrighted, so it is never
-  shipped inside the app or committed to this repository — it's my personal copy,
-  indexed locally.
-- **Retrieval is small.** A manual is a few hundred chunks. Brute-force cosine
-  similarity over a few hundred vectors held in memory is instantaneous. No vector
-  database, no dependency. Combine with SQLite FTS5 for keyword recall (part numbers
-  and warning-light names are exact-match problems, not semantic ones) — hybrid
-  retrieval, trivially.
+**The manual exists and is freely available.** Triumph publishes the official
+*Owner's Handbook — Speed 400 and Scrambler 400 X* (UK English, Sept 2023) as a PDF,
+and it's mirrored in several places. Confirmed reachable sources:
+
+| Source | Notes |
+|---|---|
+| Team-BHP forum attachment | Direct PDF of the official handbook — `…owners-handbook-uk-english-09-2023.pdf` |
+| ManualsLib — *Triumph Speed 400 Owner's Handbook* | Free PDF, ~5 MB, also a 2023-model edition |
+| World of Triumph — Owners Handbooks | Official-channel handbook downloads |
+
+Full URLs are in the Appendix.
+
+> ⚠️ **I could not download it in this session** — the sandbox this plan was written in
+> has a restrictive network egress policy and blocked every one of those hosts (403 at
+> the proxy). This is a sandbox limitation, not a sourcing problem: the file is public
+> and takes about thirty seconds to fetch on a normal connection. **Phase 0 task:**
+> download it, and — since I don't have a physical manual — treat this PDF as the
+> authoritative source for every 🟢 badge in the app.
+
+Note also that this is the **owner's handbook**, not the workshop/service manual. It
+will cover tyre pressures, fluid specs, service intervals, warning lights and routine
+checks — which is 90% of what the assistant needs. It will *not* cover torque specs
+and teardown procedures. So the safety rule (§10.5) will legitimately refuse some
+questions, and that refusal is correct behaviour, not a bug. If a service manual turns
+up later, it drops into the same corpus.
+
+**Handling:**
+
+- **Imported, never committed.** The manual is copyrighted. It's my personal copy,
+  imported into app storage on my device. It is never bundled into the APK and never
+  committed to this repository.
+- **Retrieval is small.** A ~150-page handbook is a few hundred chunks. Brute-force
+  cosine similarity over a few hundred vectors held in memory is instantaneous — no
+  vector database, no dependency, no excuse for one. Combine with SQLite FTS5 for
+  keyword recall, since part numbers and warning-light names are exact-match problems
+  rather than semantic ones. Hybrid retrieval, trivially.
+- **Embeddings** come from Gemini's embedding model at import time (a one-off network
+  call for a few hundred chunks), then live locally forever. Retrieval itself is
+  offline.
 - **Every returned chunk carries its page number**, and citations render as
-  "Owner's Manual, p. 84".
+  "Owner's Handbook, p. 84" — which I can then check against the real PDF in split
+  view.
+
+> **Tempting shortcut, deliberately rejected:** Gemini's context window is large enough
+> to hold the entire handbook, so the assistant could skip retrieval and paste the whole
+> manual into every request. That works, and it's genuinely simpler. But it sends the
+> full document on every question, costs far more tokens, and — crucially — produces
+> answers with no citation anchor, which breaks the provenance guarantee (P4) that the
+> whole assistant design rests on. Retrieval stays.
 
 ### 10.3 The curated fact table
 
@@ -743,7 +853,14 @@ Three jobs for one small table:
    which, on a road trip, is exactly when I need the tyre pressure.
 3. Acts as the authority for §10.5's safety rule.
 
-Entering it by hand from the manual, once, is an hour well spent.
+**Seeding it:** rather than typing fifty rows by hand, do a one-off extraction pass —
+feed the handbook PDF to Gemini with a JSON schema and have it pull out every
+specification with its page number. Then **verify each row against the PDF manually
+before marking it `verified`.** The extraction saves the typing; it does not save the
+checking. Given P5, an unverified row in this table is worse than a missing one — a
+missing row produces an honest "I don't know", a wrong row produces a confident lie
+about a tyre pressure. Rows start as `unverified` and are promoted only by my own eyes
+on the page.
 
 ### 10.4 The numeric grounding check
 
@@ -772,22 +889,92 @@ Everything else — DIY procedures, approximate costs, general advice, "is this 
 normal" — is permitted with a clear ⚪ badge and, where relevant, a "verify before
 acting" note.
 
-### 10.6 Privacy and the model choice
+### 10.6 Gemini — model choice, and a privacy finding that changes the design
 
-A cloud LLM gives far better answers than anything that fits on the device. The trade
-is that some of my data leaves the device.
+**Provider: Google Gemini**, using the existing API key. Good fit — the Flash tier is
+cheap-to-free, fast, multimodal, has a large context window and supports function
+calling and JSON-schema structured output, which is exactly the shape of §10.1.
 
-> **Recommendation:** cloud model (Claude API), with a hard rule that **only tool
-> results leave the device — never the raw database.** `sum_expenses` sends back one
-> number, not my transaction history. This keeps the exposure surface proportionate
-> and legible, and I can inspect exactly what was sent for any given answer.
->
-> Plus a genuine offline mode: the fact table and a set of canned record queries
-> answer the top ~20 questions with zero network. If the answer needs the network and
-> there isn't any, the app says so rather than degrading silently.
+**Two things to know before building:**
 
-An API key lives in encrypted local storage, entered once in settings. No key is
-committed anywhere.
+**1. Pin the model in config, not in code.** Google retires models on a schedule — the
+Gemini 2.5 series (Pro, Flash, Flash-Lite) is reported to reach end of life on
+**16 October 2026**, about six weeks from this writing, with Flash users migrating to
+the next Flash generation. Use the current **Flash-tier** model (Pro is overkill here
+and is no longer on the free tier), keep the model ID a settings value, and verify the
+exact current ID in AI Studio at build time rather than trusting any ID written down
+here — I could not reach Google's official docs from this sandbox to confirm the
+current lineup, and the third-party sources that were reachable disagreed with each
+other about version numbers. Treat every model ID as unverified until checked. Same
+discipline as P4, applied to my own tooling.
+
+**2. ⚠️ The free tier trains on your data.** This is the finding that changes a design
+decision. Google's free tier (AI Studio / free-tier API) reserves the right to use
+prompts *and* responses to improve its models, including human review and annotation.
+The paid tier does not. There's a regional carve-out that applies the paid-tier policy
+to free usage in the EEA, Switzerland and the UK — **India is not covered by it.**
+
+So on the free tier, in this app's naive form, my fuel spend, service costs, workshop
+names and ownership history become Google training data. That's a bad trade for a
+personal record I intend to keep for a decade.
+
+**The fix — plan on the server, compute and compose on the device.**
+
+The original design said "only tool results leave the device, never the raw database".
+Gemini's economics let us go considerably further, because record answers are
+*structured*:
+
+```
+  Question: "how much have I spent on fuel this year?"
+
+  ┌─ SENT TO GEMINI ─────────────────────────────┐
+  │  the question text                            │
+  │  the tool schema (names + parameter types)    │
+  └───────────────────────────────────────────────┘
+                     ↓
+        returns: sum_expenses(category="fuel",
+                              from="2026-01-01")
+                     ↓
+  ┌─ STAYS ON DEVICE ────────────────────────────┐
+  │  SQL executes locally           → ₹18,430    │
+  │  local template renders the sentence          │
+  │  "You've spent ₹18,430 on fuel in 2026        │
+  │   across 34 fills."                           │
+  └───────────────────────────────────────────────┘
+```
+
+**The model plans; the device computes and writes the answer.** For the large majority
+of record questions the numbers never leave the tablet at all — only the question text
+and a static tool schema do. It's faster (one round trip instead of two), cheaper, it
+works from a template so the numbers cannot be garbled in transit, and it makes the
+free tier's training policy a non-issue for the data that actually matters.
+
+Three consequences worth accepting:
+
+- **Answers are templated, not conversational**, for record questions. Fine — for
+  "how much did I spend", a crisp templated sentence is *better* than a chatty one.
+- **Genuinely open-ended record questions** ("summarise how my ownership costs have
+  changed") do need the numbers sent. Those get an explicit, per-question opt-in —
+  a visible "this will send your figures to Google" confirmation — rather than
+  happening silently.
+- **Manual questions are unaffected.** Retrieved handbook chunks contain no personal
+  data; sending them is harmless.
+
+> **Recommendation:** build the plan-then-render path first, and enable billing on the
+> key anyway. Usage here is a handful of requests a day; the paid tier will cost
+> approximately nothing and removes the training question entirely. Belt and braces —
+> cheap insurance for a ten-year personal archive.
+
+**Bonus: Gemini vision for OCR.** Since the Inbox (§5.2) is now the app's critical
+path, it's worth noting that Gemini's multimodal input plus JSON-schema structured
+output can read a crumpled Indian petrol bill far better than on-device text
+recognition plus hand-written regex. Trade-off: it sends the photo to Google and needs
+network. **Recommendation:** on-device ML Kit as the default fast path, Gemini vision
+as an explicit "couldn't read this — try harder?" fallback button. Best of both, and
+the user is always the one who decides the photo gets uploaded.
+
+**The key** lives in encrypted local storage, entered once in settings. It is never
+committed anywhere, never hardcoded, and not in this repository.
 
 ### 10.7 Worth being honest about
 
@@ -830,6 +1017,8 @@ opening.
 Saying no explicitly, so scope creep has something to bounce off:
 
 - ❌ Accounts, login, users, sharing, social feeds, leaderboards
+- ❌ A phone build (§4.1) — the phone is a camera, not a client
+- ❌ Multi-device sync (follows from tablet-only; revisit only if §4.1's trigger fires)
 - ❌ Multi-user or "my riding group" features
 - ❌ Play Store release, ASO, monetisation, subscriptions
 - ❌ A backend server of any kind
@@ -865,14 +1054,18 @@ Proposal, open to revision at Phase 0.
 
 | Layer | Choice | Why |
 |---|---|---|
-| Language / UI | Kotlin + Jetpack Compose, Material 3 | Native, best tablet adaptive story |
-| Adaptive layout | `WindowSizeClass` + canonical list-detail | One codebase, two genuinely different form factors (§4.1) |
+| Language / UI | Kotlin + Jetpack Compose, Material 3 | Native; the strongest tablet story on Android |
+| Layout | Fixed two/three-pane list-detail, landscape-first | Tablet-only (§4.1) — no `WindowSizeClass` branching, no responsive compromises |
+| Tablet extras | Drag-and-drop import, keyboard shortcuts, split-screen friendly | The Inbox and the manual-beside-assistant flows depend on these |
 | Database | Room (SQLite), single source of truth | Offline-first, relational — this data is deeply relational |
 | Search | SQLite FTS5 | Free, fast, offline, no dependency |
 | Vectors | In-memory float arrays + cosine | A few hundred chunks; a vector DB would be absurd here |
 | Background | `WorkManager` daily recompute + notification channels | Reliable across Android's battery restrictions |
-| Camera / OCR | CameraX + ML Kit text recognition (on-device) | Free, offline, no images leave the device |
-| PDF | `PdfRenderer` to view; PDFBox-Android to extract manual text at import | |
+| Image import | Photo Picker, share-sheet intent filters, drag-and-drop | The Inbox is the app's critical path (§5.2) — no in-app camera needed |
+| OCR | ML Kit text recognition on-device, Gemini vision as opt-in fallback | Fast and private by default; accurate when it matters (§10.6) |
+| PDF | `PdfRenderer` to view; PDFBox-Android to extract handbook text at import | |
+| AI | Gemini SDK — Flash-tier model, **ID kept in settings** | Retirement cycles are real (§10.6); never hardcode a model ID |
+| Embeddings | Gemini embedding model at import; vectors stored locally | One-off network call, then retrieval is offline forever |
 | Charts | Vico, or hand-rolled Compose Canvas | Few enough charts to consider drawing them |
 | DI | Hilt | |
 | Files | App-private storage; SAF for import/export | |
@@ -880,11 +1073,11 @@ Proposal, open to revision at Phase 0.
 | Testing | JUnit on the fuel-economy, interval and cost engines | The maths is the part that must be right (§9) |
 | Build | Gradle + GitHub Actions producing a signed APK artifact | Sideload; no store |
 
-**Rejected alternatives.** A PWA or Flutter would be faster to start, but Android's
-reliable scheduled local notifications, home-screen widgets, camera OCR and background
-work are the load-bearing parts of "I don't have to remember anything" — and those are
-exactly where cross-platform layers are weakest. Native is the right call for an app
-that will only ever run on Android.
+**Rejected alternatives.** A PWA or Flutter would be faster to start, but reliable
+scheduled local notifications, share-sheet registration, background work and SAF file
+handling are the load-bearing parts of "I don't have to remember anything" — and those
+are exactly where cross-platform layers are weakest. Native is the right call for an
+app that will only ever run on one Android tablet.
 
 **Backup (P6), Phase 1, non-negotiable:**
 - One-tap export → a single encrypted archive (SQLite dump + attachments + manifest)
@@ -900,12 +1093,15 @@ that will only ever run on Android.
 Each phase ends with something genuinely usable. No phase is a scaffolding-only phase.
 
 ### Phase 0 — Decide and set up *(~1 weekend)*
-- Answer §16's open questions
+- **Download the owner's handbook PDF** (§10.2, Appendix) — everything 🟢 depends on it
+- Read its maintenance schedule and transcribe the real intervals into the component
+  catalogue, replacing the *unverified* placeholders
+- Seed the `facts` table from the handbook and **verify every row by eye** (§10.3)
+- Answer the remaining §16 questions
 - Project skeleton, Room schema, navigation, theme
-- Seed the component catalogue with intervals marked *unverified*
-- Transcribe key specs from the owner's manual into the `facts` table
 - Backfill onboarding: purchase details, current odometer, old bills photographed
-- **Done when:** the app opens, knows the bike exists, and has my real starting state
+- **Done when:** the app opens, knows the bike exists, and every interval in it traces
+  to a page number in the handbook
 
 ### Phase 1 — The logbook *(~2–3 weekends)* — **ship this and start using it**
 - Odometer readings + km/day projection engine
@@ -913,7 +1109,8 @@ Each phase ends with something genuinely usable. No phase is a scaffolding-only 
 - Expenses with categories and line items
 - Timeline (all events, filterable)
 - Dashboard v1: quick actions, bike card, pulse, recent activity
-- Capture Inbox (photo now, structure later)
+- Capture Inbox: gallery import + share-sheet target + drag-and-drop (§5.2) —
+  promoted in importance now that it's the app's only route in
 - **Backup / restore / export**
 - **Done when:** I stop using anything else to record fuel and spending
 
@@ -936,12 +1133,14 @@ Each phase ends with something genuinely usable. No phase is a scaffolding-only 
 - **Done when:** I can answer any question about the bike's past in under a minute
 
 ### Phase 4 — The assistant *(~3 weekends)*
-- Manual import, chunking, page-cited hybrid retrieval
+- Handbook import, chunking, Gemini embeddings, page-cited hybrid retrieval
 - Record tools over SQLite, typed and deterministic
-- Router, composer, provenance badges
+- Gemini router with function calling; **on-device composition** for record answers
+  (§10.6) so the numbers never leave the tablet
 - Numeric grounding check + safety rule
 - Offline fact-table fallback + Quick Specs screen
-- **Done when:** I ask it something instead of opening the manual, and trust the answer
+- Split-view: handbook PDF open beside the assistant, so a citation is one glance away
+- **Done when:** I ask it something instead of opening the handbook, and trust the answer
 
 ### Phase 5 — Long tail *(ongoing)*
 - Home-screen widget · vendor directory · inventory · manual ride log
@@ -950,32 +1149,32 @@ Each phase ends with something genuinely usable. No phase is a scaffolding-only 
 
 ---
 
-## 16. Open questions — decisions I need from you
+## 16. Open questions
 
-Ordered by how much they change the build.
+### Resolved
 
-1. **One device or two?** If the app runs on both phone and tablet, "no accounts"
-   collides with needing the same data in two places. Options: (a) phone is the device
-   of record, tablet is read-only via export — simple, slightly annoying; (b) file-based
-   sync through a Drive folder with last-write-wins — moderate effort, occasional
-   conflicts; (c) genuinely one device. **My recommendation: (a) for Phase 1, revisit at
-   Phase 5.** But this needs your answer at Phase 0, because it shapes the schema (sync
-   needs per-row timestamps and IDs designed for merge from the start).
-2. **Do you have the owner's manual as a PDF?** The knowledge base and the whole
-   safety story (P5) depend on it. If not, Phase 4 needs rethinking and the fact table
-   has to come from the printed book.
-3. **What history exists to backfill?** Purchase date, purchase price, current
+| Question | Answer | What it changed |
+|---|---|---|
+| One device or two? | **Tablet only** | Sync complexity deleted; capture moves to phone-camera-plus-import; roadside document mode cut. §4.1, §5.2, §7.6 |
+| Owner's manual? | **Don't have it — sourced from the web** | It's freely available (§10.2). Phase 0 gains a download-and-transcribe task. Note it's the *owner's handbook*, not the workshop manual, so torque specs will be out of scope for 🟢 answers |
+| Which LLM? | **Gemini** (existing key) | Rewrote §10.6. Surfaced the free-tier training issue and the plan-then-render fix; opened up vision OCR as an Inbox fallback |
+
+### Still open
+
+1. **What history exists to backfill?** Purchase date, purchase price, current
    odometer, and any past service invoices — paper or digital. This determines whether
-   analytics are useful on day one or in six months.
-4. **Do you do your own maintenance?** Chain cleaning, oil changes, brake pads — or is
+   analytics are useful on day one or in six months. Needed at Phase 0.
+2. **Do you do your own maintenance?** Chain cleaning, oil changes, brake pads — or is
    everything dealer-done? Heavy DIY shifts weight toward procedures, parts inventory
-   and torque specs; dealer-only shifts it toward invoices, warranty and cost tracking.
-5. **Is a cloud LLM acceptable** under the §10.6 rule that only tool *results* leave
-   the device, or does it need to be strictly on-device (which means a much weaker
-   assistant)?
-6. **Do you want ride tracking at all,** or is a manual trip log enough? This is the
+   and torque specs (and makes the missing workshop manual a real gap); dealer-only
+   shifts it toward invoices, warranty and cost tracking.
+3. **Will you enable billing on the Gemini key?** Recommended (§10.6) — usage will cost
+   pennies and it removes the training-data question entirely. If you'd rather stay on
+   the free tier, the plan-then-render design already covers the important case; you'd
+   just lose the open-ended record questions.
+4. **Do you want ride tracking at all,** or is a manual trip log enough? Still the
    single biggest effort swing in the plan.
-7. **How much time per week** do you want to put into this? It changes whether Phase 1
+5. **How much time per week** do you want to put into this? It changes whether Phase 1
    is three weeks or three months, and whether Phases 4–5 are realistic at all.
 
 ---
@@ -984,7 +1183,10 @@ Ordered by how much they change the build.
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **Logging fatigue** — the app dies of neglect | Critical | The friction budget (P1), the Capture Inbox, ₹-first fuel entry, widget. Treat any flow over budget as a bug. |
+| **Logging fatigue** — the app dies of neglect | Critical | The friction budget (P1), the Capture Inbox, ₹-first fuel entry. Treat any flow over budget as a bug. |
+| **Batching lag** — tablet-only means entry is deferred, and deferred things get dropped | High | Inbox count on the dashboard, weekly reconcile nudge, photo-timestamp preservation. If it stays backed up for three months, build the phone capture companion (§4.1) |
+| **Personal records become training data** | High | Plan-then-render keeps figures on-device (§10.6); enable billing; explicit opt-in for anything that sends numbers |
+| **Hardcoded Gemini model ID breaks on a retirement date** | Medium | Model ID is a settings value, not a constant (§14) |
 | **Data loss** — one device, ten years of records | Critical | Backup in Phase 1 (P6), verified restore, plain-format export |
 | **Hallucinated safety spec** | Critical | Verified-only rule (P5), numeric grounding check (§10.4), refusal over estimation |
 | **Bad data poisoning analytics** | High | Entry-time validation (§9.2), full-to-full economy (§9.1), anomalies flagged not silently absorbed |
@@ -1011,11 +1213,40 @@ Not download counts. These:
 
 ---
 
-## Appendix — sources consulted
+## Appendix — sources
 
-Public sources used for context while planning. **None of these are treated as
+### The owner's handbook (Phase 0: download one of these)
+
+The official *Owner's Handbook — Speed 400 and Scrambler 400 X* (UK English,
+09/2023). **This is the app's authoritative source** — the thing every 🟢 badge
+points at. I could not download it from the sandbox this plan was written in (network
+egress policy blocked all three hosts), so this is a manual Phase 0 step.
+
+- [Team-BHP forum — direct PDF of the official handbook](https://www.team-bhp.com/forum/attachments/motorbikes/2604894d1715434748-triumph-speed-400-review-triumph-speed-400-scrambler-400-x-owners-handbook-uk-english-09-2023.pdf)
+- [ManualsLib — Triumph Speed 400 Owner's Handbook](https://www.manualslib.com/manual/3346108/Triumph-Speed-400.html) (~5 MB)
+- [ManualsLib — Triumph Speed 400 (2023) Owner's Handbook](https://www.manualslib.com/manual/3443037/Triumph-Speed-400-2023.html)
+- [World of Triumph — Owners Handbooks](https://www.worldoftriumph.com/pages/owners-handbooks)
+
+A workshop/service manual would additionally cover torque specs and teardown
+procedures; worth looking for if §16's DIY question comes back "yes".
+
+### Gemini API
+
+Used for §10.6. Note these are third-party summaries — **verify the current model
+lineup, pricing and data-usage terms in Google AI Studio and Google's own docs before
+building**, since I could not reach `ai.google.dev` from this sandbox and the
+secondary sources disagreed with each other on version numbers.
+
+- [Gemini API free tier — limits and quotas](https://pecollective.com/tools/gemini-free-tier-guide/)
+- [Gemini API pricing guide 2026](https://www.opslyft.com/blog/google-gemini-api-pricing)
+- [Does Gemini train on your data — free vs paid tier](https://meetily.ai/llm-privacy/gemini)
+- [Gemini free-tier data privacy](https://docs.bswen.com/blog/2026-03-23-gemini-free-tier-data-privacy/)
+
+### Bike specifications (context only)
+
+Public sources used for orientation while planning. **None of these are treated as
 authoritative by the app** (P4); every specification and interval must be confirmed
-against the owner's manual before the app asserts it. The 349cc/398cc contradiction
+against the owner's handbook before the app asserts it. The 349cc/398cc contradiction
 noted in §3 came from comparing these.
 
 - [Triumph Motorcycles India — T-series Q&A](https://www.triumphmotorcycles.in/for-the-ride/news/motorcycles/t-series-q-and-a-2024-03-28)
